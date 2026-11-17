@@ -1,0 +1,10 @@
+{
+  "name": "jarvis-openapi-tool",
+  "private": true,
+  "description": "Gerador de tipos isolado: o openapi-typescript precisa da API JavaScript do TypeScript 5, que não existe no TS 7 usado pelo web.",
+  "type": "module",
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3"
+  }
+}

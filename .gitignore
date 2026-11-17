@@ -3,3 +3,22 @@
 PLAN.md
 CLAUDE.md
 .claude/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Node / web
+node_modules/
+web/dist/
+web/tools/openapi/openapi.json
+*.tsbuildinfo
+
+# Segredos e dados locais
+.env.*
+!.env.example
+*.db
+*.db-*
