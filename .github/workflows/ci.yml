@@ -55,5 +55,8 @@ jobs:
         working-directory: web
       - run: npm test
         working-directory: web
+      - name: Smoke test (Playwright)
+        run: npx playwright install --with-deps chromium && npm run e2e
+        working-directory: web
       - run: npm run build
         working-directory: web

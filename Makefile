@@ -4,15 +4,17 @@ SHELL := /bin/bash
 HOST ?= 127.0.0.1
 PORT ?= 8000
 
-.PHONY: help setup dev test lint format types types-check build start clean
+.PHONY: help setup dev test contract lint format types types-check build start clean
 
 help: ## Mostra esta ajuda
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
 
-setup: ## Instala as dependências (Python e Node)
+setup: ## Instala as dependências (Python e Node) e cria o .env de desenvolvimento
+	@test -f .env || (cp .env.example .env && echo "Criei o .env a partir do .env.example (valores só para dev).")
 	cd server && uv sync
 	cd web && npm ci
 	cd web/tools/openapi && npm ci
+	cd web && npx playwright install chromium
 
 dev: ## API em :8000 e web em :5173, com reload (Ctrl+C para os dois)
 	@trap 'kill 0' INT TERM EXIT; \
@@ -20,9 +22,14 @@ dev: ## API em :8000 e web em :5173, com reload (Ctrl+C para os dois)
 	(cd web && npm run dev) & \
 	wait
 
-test: ## pytest + vitest
+test: ## pytest (unidade + contrato) + vitest + Playwright (smoke a 375 px)
 	cd server && uv run pytest
 	cd web && npm test
+	cd web && npm run e2e
+
+contract: ## Só a suíte de contrato. Outro servidor: make contract URL=http://... PASSWORD=...
+	cd server && JARVIS_CONTRACT_URL="$(URL)" JARVIS_CONTRACT_PASSWORD="$(PASSWORD)" \
+	  JARVIS_CONTRACT_TOKEN="$(TOKEN)" uv run pytest tests/contract
 
 lint: ## ruff, pyright, oxlint, tsc
 	cd server && uv run ruff check . && uv run ruff format --check . && uv run pyright
