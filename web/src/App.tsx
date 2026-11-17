@@ -1,63 +1,53 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getHealth, type Health } from '@/api/client'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { RequireAuth } from '@/components/AppShell'
+import { ComingSoon } from '@/components/ComingSoon'
+import { ToastProvider } from '@/components/Toast'
+import { ApiError } from '@/api/client'
+import { installUnauthorizedHandler } from '@/features/auth/session'
+import { LoginPage } from '@/features/auth/LoginPage'
+import { TasksPage } from '@/features/tasks/TasksPage'
 
-type State =
-  | { kind: 'loading' }
-  | { kind: 'ok'; health: Health }
-  | { kind: 'error'; message: string }
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Erro de regra ou de login não melhora tentando de novo; só falha de rede.
+      retry: (count, error) => count < 2 && error instanceof ApiError && error.status === null,
+      refetchOnWindowFocus: true,
+    },
+  },
+})
+installUnauthorizedHandler(queryClient)
 
 export default function App() {
-  const [state, setState] = useState<State>({ kind: 'loading' })
-
-  // Só chama setState quando a resposta chega (assíncrono), nunca direto no efeito.
-  const load = useCallback(() => {
-    getHealth()
-      .then((health) => setState({ kind: 'ok', health }))
-      .catch((error: unknown) =>
-        setState({
-          kind: 'error',
-          message: error instanceof Error ? error.message : 'Erro inesperado.',
-        }),
-      )
-  }, [])
-
-  useEffect(() => {
-    load()
-  }, [load])
-
-  const retry = () => {
-    setState({ kind: 'loading' })
-    load()
-  }
-
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 p-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Jarvis</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Estado da API</CardTitle>
-          <CardDescription>GET /api/health</CardDescription>
-        </CardHeader>
-        <CardContent aria-live="polite" className="flex items-center justify-between gap-4">
-          {state.kind === 'loading' && <p className="text-muted-foreground">Verificando…</p>}
-          {state.kind === 'ok' && (
-            <p>
-              <span className="mr-2 inline-block size-2.5 rounded-full bg-emerald-500" aria-hidden />
-              API: {state.health.status} · v{state.health.version}
-            </p>
-          )}
-          {state.kind === 'error' && (
-            <>
-              <p className="text-destructive">{state.message}</p>
-              <Button variant="outline" onClick={retry}>
-                Tentar de novo
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route element={<RequireAuth />}>
+              <Route path="/" element={<Navigate to="/tarefas" replace />} />
+              <Route
+                path="/hoje"
+                element={
+                  <ComingSoon title="Hoje">
+                    Aqui vão aparecer as tarefas atrasadas e de hoje, e o saldo do mês.
+                  </ComingSoon>
+                }
+              />
+              <Route path="/tarefas" element={<TasksPage />} />
+              <Route
+                path="/financas"
+                element={
+                  <ComingSoon title="Finanças">Gastos, receitas e o resumo do mês chegam no M4.</ComingSoon>
+                }
+              />
+              <Route path="*" element={<Navigate to="/tarefas" replace />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
+    </QueryClientProvider>
   )
 }
